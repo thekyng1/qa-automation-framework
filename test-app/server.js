@@ -47,7 +47,7 @@ function readBody(req) {
   });
 }
 
-/** Pseud0-token: base64("username:timestamp"). NOT secure — this is a test app. */
+/** Pseudo-token: base64("username:timestamp"). NOT secure — this is a test app. */
 function makeToken(username) {
   return Buffer.from(`${username}:${Date.now()}`).toString('base64');
 }
