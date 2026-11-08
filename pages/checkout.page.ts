@@ -24,7 +24,7 @@ export class CheckoutPage {
   async fillShippingInfo(info: ShippingInfo): Promise<void> {
     await this.fullNameInput.fill(info.fullName);
     await this.phoneInput.fill(info.phone);
-    this.addressInput.fill(info.address);
+    await this.addressInput.fill(info.address);
   }
 
   async placeOrder(): Promise<void> {
