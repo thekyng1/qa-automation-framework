@@ -20,7 +20,9 @@ export interface LlmFixtures {
 }
 
 export const test = base.extend<LlmFixtures>({
-  llm: async (_, use) => {
+  // Playwright requires fixtures to destructure the first argument,
+  // even when the fixture consumes nothing from it.
+  llm: async ({}, use) => {
     await use(
       useReal
         ? new DeepSeekAdapter(process.env.DEEPSEEK_API_KEY as string)
