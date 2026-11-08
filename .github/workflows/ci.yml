@@ -21,6 +21,7 @@ jobs:
           name: test-results
           path: |
             playwright-report/
+            playwright-report.json
             test-results/
             pm-results/
           retention-days: 14
