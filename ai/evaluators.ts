@@ -23,7 +23,7 @@ export function validateSchema(caseId: string, text: string, schema: Record<stri
 
 function checkBudget(caseId: string, r: LlmResponse, budget?: Budget): string[] {
   const errors: string[] = [];
-  if (budget?.maxLatencyMs && r.latencyMs > budget.maxLatencyMaxSafeCheck(budget.maxLatencyMs)) {
+  if (budget?.maxLatencyMs && r.latencyMs > budget.maxLatencyMs) {
     errors.push(`${caseId}: latency ${r.latencyMs}ms exceeds budget ${budget.maxLatencyMs}ms`);
   }
   if (budget?.maxTokensOut && r.tokensOut > budget.maxTokensOut) {
