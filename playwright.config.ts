@@ -1,4 +1,4 @@
-﻿import { defineConfig, devices } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
 import { withPostman } from 'postman-playwright';
 
 export default withPostman(defineConfig({
@@ -13,6 +13,7 @@ export default withPostman(defineConfig({
   ],
   use: {
     baseURL: process.env.BASE_URL || 'https://www.saucedemo.com',
+    trace: 'on',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
     actionTimeout: 10_000,
