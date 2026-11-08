@@ -5,6 +5,7 @@
 import { test, expect } from '../fixtures/pages.fixture';
 import users from '../test-data/users.json';
 import { randomPhone } from '../utils/data-generator';
+import { logger } from '../utils/logger';
 
 test.describe('Orders API', () => {
   test('login returns a token that can place an order', async ({ request, db }) => {
