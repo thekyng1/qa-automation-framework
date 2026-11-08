@@ -2,13 +2,13 @@ import { type Page, type Locator, expect } from '@playwright/test';
 
 export class InventoryPage {
   private readonly productsHeading: Locator;
-  private readonly productList: Locator;
   private readonly welcomeMessage: Locator;
+  private readonly productList: Locator;
 
   constructor(private readonly page: Page) {
     this.productsHeading = page.getByRole('heading', { name: /products/i });
-    this.productList = page.getByRole('list', { name: '' }).filter({ hasNot: page.getByTestId('product-list') });
     this.welcomeMessage = page.getByTestId('welcome-message');
+    this.productList = page.getByTestId('product-list');
   }
 
   async expectLoaded(): Promise<void> {
@@ -20,11 +20,12 @@ export class InventoryPage {
   }
 
   private productCard(name: string): Locator {
-    return this.page.getByRole('listitem', { name });
+    return this.productList.getByRole('listitem', { name });
   }
 
   async addToCart(productName: string): Promise<void> {
     await this.productCard(productName)
+      .has({ text: productName })
       .getByRole('button', { name: /add to cart/i })
       .click();
   }
