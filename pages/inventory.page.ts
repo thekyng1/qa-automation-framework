@@ -19,18 +19,19 @@ export class InventoryPage {
     await expect(this.welcomeMessage).toContainText(fullName);
   }
 
-  private productCard(name: string): Locator {
+  /** Public read-only locator for assertions on a product card by name. */
+  productCardByName(name: string): Locator {
     return this.productList.getByRole('listitem', { name });
   }
 
   async addToCart(productName: string): Promise<void> {
-    await this.productCard(productName)
+    await this.productCardByName(productName)
       .getByRole('button', { name: /add to cart/i })
       .click();
   }
 
   async expectItemAdded(productName: string): Promise<void> {
-    await expect(this.productCard(productName).getByRole('button', { name: /added/i })).toBeVisible();
+    await expect(this.productCardByName(productName).getByRole('button', { name: /added/i })).toBeVisible();
   }
 
   async proceedToCheckout(): Promise<void> {
