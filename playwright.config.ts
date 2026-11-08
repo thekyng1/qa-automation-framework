@@ -8,6 +8,11 @@ import { withPostman } from 'postman-playwright';
  * The demo app, its MySQL instance and the base URL are all provided by
  * globalSetup (fixtures/db.fixture.ts) — nothing to configure manually.
  *
+ * NOTE (CI root cause, fixed): withPostman REQUIRES trace: 'on'.
+ * It hard-rejects 'on-first-retry' at config load — API capture must cover
+ * every test, not just retries. Do NOT change this back, CI will go red
+ * instantly with "Incompatible use.trace setting".
+ *
  * NOTE: do NOT add testMatch/grep filters to "force green". The suite is
  * small (6 tests) and every test is a required acceptance criterion. If CI
  * is red, debug the root cause in the run logs — never narrow the suite.
@@ -27,7 +32,7 @@ export default withPostman(defineConfig({
 
   use: {
     baseURL: process.env.BASE_URL || 'http://127.0.0.1:3100',
-    trace: 'on-first-retry',
+    trace: 'on', // required by withPostman — full API capture for every test
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
     actionTimeout: 10_000,
