@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Demo Shop</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; }
+    fieldset { border: 1px solid #ccc; border-radius: 8px; padding: 16px; margin-bottom: 24px; }
+    label { display: block; margin: 8px 0 4px; }
+    input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    button { padding: 8px 16px; border-radius: 4px; border: 1px solid #888; cursor: pointer; margin-top: 8px; }
+    ul[role="list"] { list-style: none; padding: 0; }
+    li[role="listitem"] { border: 1px solid #eee; border-radius: 8px; padding: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+    .error { color: #b00; }
+    [role="alert"] { padding: 8px; background: #fdd; border-radius: 4px; margin-top: 8px; }
+    [role="status"] { padding: 8px; background: #dfd; border-radius: 4px; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <h1>Demo Shop</h1>
+
+  <section data-testid="login-section" aria-labelledby="login-heading">
+    <h2 id="login-heading">Sign in</h2>
+    <form id="login-form" data-testid="login-form">
+      <label for="username">Username</label>
+      <input id="username" name="username" type="text" autocomplete="username" required>
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required>
+      <button type="submit" data-testid="login-submit">Sign in</button>
+      <div role="alert" data-testid="login-error" hidden></div>
+    </form>
+  </section>
+
+  <section data-testid="shop-section" aria-labelledby="shop-heading" hidden>
+    <h2 id="shop-heading">Products</h2>
+    <p data-testid="welcome-message"></p>
+    <ul role="list" data-testid="product-list"></ul>
+    <button id="checkout-btn" data-testid="open-checkout">Proceed to checkout</button>
+  </section>
+
+  <section data-testid="checkout-section" aria-labelledby="checkout-heading" hidden>
+    <h2 id="checkout-heading">Checkout</h2>
+    <form id="checkout-form" data-testid="checkout-form">
+      <label for="full-name">Full name</label>
+      <input id="full-name" name="fullName" type="text" required>
+      <label for="phone">Phone</label>
+      <input id="phone" name="phone" type="tel" required>
+      <label for="address">Address</label>
+      <input id="address" name="address" type="text" required>
+      <button type="submit" data-testid="place-order">Place order</button>
+      <div role="status" data-testid="order-confirmation" hidden></div>
+    </form>
+  </section>
+
+  <script>
+    let token = null;
+    let selectedProduct = null;
+
+    const $ = (id) => document.getElementById(id);
+
+    async function api(path, options = {}) {
+      const res = await fetch(path, {
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) },
+        ...options,
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || 'Request failed: ' + res.status);
+      return body;
+    }
+
+    $('login-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const errorBox = $('login-error'.replace('login-error', 'login-error'));
+      const errEl = document.querySelector('[data-testid="login-error"]');
+      errEl.hidden = true;
+      try {
+        const { token: t, fullName } = await api('/api/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({
+            username: $('username').value,
+            password: $('password').value,
+          }),
+        });
+        token = t;
+        document.querySelector('[data-testid="welcome-message"]').textContent = 'Welcome, ' + fullName + '!';
+        document.querySelector('[data-testid="login-section"]').hidden = true;
+        document.querySelector('[data-testid="shop-section"]').hidden = false;
+        await loadProducts();
+      } catch (err) {
+        errEl.textContent = err.message;
+        errEl.hidden = false;
+      }
+    });
+
+    async function loadProducts() {
+      const products = await api('/api/products');
+      const list = document.querySelector('[data-testid="product-list"]');
+      list.innerHTML = '';
+      for (const product of products) {
+        const li = document.createElement('li');
+        li.setAttribute('role', 'listitem');
+        li.setAttribute('aria-label', product.name);
+        const name = document.createElement('span');
+        name.textContent = product.name + ' — $' + Number(product.price).toFixed(2);
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = 'Add to cart';
+        button.addEventListener('click', () => { selectedProduct = product; button.textContent = 'Added ✓'; });
+        li.append(name, button);
+        list.append(li);
+      }
+    }
+
+    $('checkout-btn').addEventListener('click', () => {
+      if (!selectedProduct) {
+        alert('Please add a product to the cart first.');
+        return;
+      }
+      document.querySelector('[data-testid="shop-section"]').hidden = true;
+      document.querySelector('[data-testid="checkout-section"]').hidden = false;
+    });
+
+    $('checkout-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      try {
+        const response = await api('/api/orders', {
+          method: 'POST',
+          body: JSON.stringify({
+            productId: selectedProduct.id,
+            fullName: $('full-name').value,
+            phone: $('phone').value,
+            address: $('address').value,
+          }),
+        });
+        const confirmation = document.querySelector('[data-testid="order-confirmation"]');
+        confirmation.textContent = 'Order confirmed! Order ID: ' + response.orderId + ' — ' + response.product;
+        confirmation.hidden = false;
+      } catch (err) {
+        alert('Order failed: ' + err.message);
+      }
+    });
+  </script>
+</body>
+</html>
