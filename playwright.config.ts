@@ -12,12 +12,18 @@ export default withPostman(defineConfig({
     ['list'],
   ],
   use: {
-    baseURL: process.env.BASE_URL || 'https://www.saucedemo.com',
+    baseURL: process.env.BASE_URL || 'http://localhost:3000',
     trace: 'on',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
     actionTimeout: 10_000,
     navigationTimeout: 15_000,
+  },
+  webServer: {
+    command: 'npm run start',
+    url: 'http://localhost:3000',
+    reuseExistingServer: !process.env.CI,
+    timeout: 120 * 1000,
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
