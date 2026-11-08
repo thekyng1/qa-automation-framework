@@ -25,7 +25,6 @@ export class InventoryPage {
 
   async addToCart(productName: string): Promise<void> {
     await this.productCard(productName)
-      .has({ text: productName })
       .getByRole('button', { name: /add to cart/i })
       .click();
   }
