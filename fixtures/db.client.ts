@@ -15,10 +15,9 @@ import type { Connection } from 'mysql2/promise';
 import { query, findOne, count, type Where } from '../utils/db';
 
 export class DbClient {
-  constructor(
-    private readonly conn: Connection,
-    private readonly cleanups: Array<{ table: string; where: Where }> = [],
-  ) {}
+  private readonly cleanups: Array<{ table: string; where: Where }> = [];
+
+  constructor(private readonly conn: Connection) {}
 
   query<T = any>(sql: string, params: unknown[] = []): Promise<T[]> {
     return query<T>(this.conn, sql, params);
@@ -33,25 +32,21 @@ export class DbClient {
   }
 
   /** Register a row written by the app for deletion after the test's rollback. */
-  cleanupLater(table: string, where: Commit | any) {
-    this.cleanups.push({ table, where: where as Where });
+  cleanupLater(table: string, where: Where): void {
+    this.cleanups.push({ table, where });
   }
 
   /** Internal — called by the db fixture after rollback. Not for test code. */
-  flushCleanups(): Promise<void> {
-    if (this.cleanups.length === 0) return Promise.resolve();
-    return Promise.all(
-      this.cleanups.map(({ table, where }) =>
-        this.query(`DELETE FROM ?? WHERE ${Object.keys(where).map(() => '?? = ?').join(' AND ')}`,
-          [table, ...Object.keys(where).flatMap((k) => [k, where[k]])]),
-      ),
-    ).then(() => undefined);
+  async flushCleanups(): Promise<void> {
+    for (const { table, where } of this.cleanups) {
+      const keys = Object.keys(where);
+      await this.query(
+        `DELETE FROM ?? WHERE ${keys.map(() => '?? = ?').join(' AND ')}`,
+        [table, ...keys.flatMap((k) => [k, where[k]])],
+      );
+    }
   }
 }
-
-type Commit = Record<string, unknown>;
-
-export { baseExpect };
 
 /** expect(db).toHaveRecord('orders', { shipping_phone: phone }) */
 export const expect = baseExpect.extend({
