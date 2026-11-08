@@ -5,13 +5,11 @@
   <title>Demo Shop</title>
   <style>
     body { font-family: system-ui, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; }
-    fieldset { border: 1px solid #ccc; border-radius: 8px; padding: 16px; margin-bottom: 24px; }
     label { display: block; margin: 8px 0 4px; }
     input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-    button { padding: 8px 16px; border-radius: 4px; border: 1px solid #88; cursor: pointer; margin-top: 8px; }
+    button { padding: 8px 16px; border-radius: 4px; border: 1px solid #888; cursor: pointer; margin-top: 8px; }
     ul[role="list"] { list-style: none; padding: 0; }
     li[role="listitem"] { border: 1px solid #eee; border-radius: 8px; padding: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
-    .error { color: #b00; }
     [role="alert"] { padding: 8px; background: #fdd; border-radius: 4px; margin-top: 8px; }
     [role="status"] { padding: 8px; background: #dfd; border-radius: 4px; margin-top: 8px; }
   </style>
@@ -47,7 +45,7 @@
       <input id="phone" name="phone" type="tel" required>
       <label for="address">Address</label>
       <input id="address" name="address" type="text" required>
-      <button type="submit" data-testid="place-order">Place order</INSERTED_TOKEN_PLACEHOLDERbutton>
+      <button type="submit" data-testid="place-order">Place order</button>
       <div role="status" data-testid="order-confirmation" hidden></div>
     </form>
   </section>
