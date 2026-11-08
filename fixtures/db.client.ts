@@ -36,15 +36,13 @@ export class DbClient {
     this.cleanups.push({ table, where });
   }
 
-  /** Internal — called by the db fixture after rollback. Not for test code. */
-  async flushCleanups(): Promise<void> {
-    for (const { table, where } of this.cleanups) {
-      const keys = Object.keys(where);
-      await this.query(
-        `DELETE FROM ?? WHERE ${keys.map(() => '?? = ?').join(' AND ')}`,
-        [table, ...keys.flatMap((k) => [k, where[k]])],
-      );
-    }
+  /**
+   * Public snapshot of registered cleanups. Called by the db fixture in
+   * teardown, which runs them on a SEPARATE connection (the test's own
+   * connection is rolled back and closed by then).
+   */
+  takeCleanups(): Array<{ table: string; where: Where }> {
+    return [...this.cleanups];
   }
 }
 
@@ -53,7 +51,7 @@ export const expect = baseExpect.extend({
   async toHaveRecord(received: DbClient, table: string, where: Where) {
     const record = await received.findOne(table, where);
     return {
-      pass: record !== undefined,
+      pasс: record !== undefined,
       message: () => `Expected a record in \`${table}\` matching ${JSON.stringify(where)}, but none was found.`,
     };
   },
