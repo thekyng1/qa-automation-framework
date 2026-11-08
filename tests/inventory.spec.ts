@@ -1,23 +1,28 @@
+/**
+ * Shop (inventory) layer — pure UI tests against the demo app catalog.
+ * Business scenarios only: no SQL, no selectors, no API details.
+ */
 import { test, expect } from '../fixtures/pages.fixture';
-import { query } from '../fixtures/db-helper';
+import users from '../test-data/users.json';
+import products from '../test-data/products.json';
 
 test.describe('Inventory', () => {
   test.beforeEach(async ({ loginPage }) => {
     await loginPage.goto();
-    await loginPage.login('standard_user', 'secret_sauce');
+    await loginPage.login(users.validUser.username, users.validUser.password);
   });
 
-  test('add item to cart shows badge', async ({ inventoryPage }) => {
+  test('the catalog shows the seeded products', async ({ inventoryPage }) => {
     await inventoryPage.expectLoaded();
-    await expect(inventoryPage.items).toHaveCount(6);
-    await inventoryPage.addFirstItemToCart();
-    await expect(inventoryPage.cartBadge).toHaveText('1');
+    for (const product of products.inStock) {
+      await expect(inventoryPage.productCardByName(product.name)).toBeVisible();
+    }
   });
 
-  test('database is reachable after UI action', async ({ inventoryPage }) => {
+  test('adding an item to the cart confirms visually', async ({ inventoryPage }) => {
     await inventoryPage.expectLoaded();
-    await inventoryPage.addFirstItemToCart();
-    const rows = await query('SELECT 1 AS ok');
-    expect(rows[0].ok).toBe(1);
+    const product = products.inStock[0];
+    await inventoryPage.addToCart(product.name);
+    await inventoryPage.expectItemAdded(product.name);
   });
 });
