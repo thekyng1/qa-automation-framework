@@ -1,0 +1,10 @@
+﻿{
+  "info": { "name": "saucedemo-auth", "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json" },
+  "item": [
+    {
+      "name": "Login page",
+      "request": { "method": "GET", "url": "https://www.saucedemo.com/" },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('status is 200', () => pm.response.to.have.status(200));"] } }]
+    }
+  ]
+}

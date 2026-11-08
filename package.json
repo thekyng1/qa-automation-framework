@@ -1,0 +1,23 @@
+{
+  "name": "qa-automation-framework",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:api": "postman application test -- npx playwright test",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.0",
+    "@types/node": "^24.0.0",
+    "mysql-memory-server": "^1.18.0",
+    "mysql2": "^3.11.0",
+    "postman-cli": "^1.62.0",
+    "postman-playwright": "^1.1.2",
+    "typescript": "^5.6.0"
+  },
+  "allowScripts": {
+    "postman-cli@1.87.0": true
+  }
+}

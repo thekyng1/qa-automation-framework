@@ -1,0 +1,8 @@
+﻿node_modules/
+dist/
+playwright-report/
+test-results/
+pm-results/
+fixtures/db-runtime.json
+.env
+*.log
