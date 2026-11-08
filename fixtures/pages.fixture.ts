@@ -43,10 +43,11 @@ export const test = base.extend<Fixtures>({
       } catch {
         // connection may already be broken; cleanup still runs below
       }
-      // Rows the APP committed cannot be rolled back — delete them explicitly.
+      // Rows the APP committed cannot be rolled back — delete them explicitly
+      // on a separate connection, using the public takeCleanups() snapshot.
       const standalone = await getDbConnection();
       try {
-        for (const { table, where } of (client as any).cleanups as Array<{ table: string; where: Record<string, unknown> }>) {
+        for (const { table, where } of client.takeCleanups()) {
           const keys = Object.keys(where);
           if (keys.length === 0) continue;
           await standalone.query(
