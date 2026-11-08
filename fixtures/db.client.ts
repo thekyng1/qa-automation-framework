@@ -51,7 +51,7 @@ export const expect = baseExpect.extend({
   async toHaveRecord(received: DbClient, table: string, where: Where) {
     const record = await received.findOne(table, where);
     return {
-      pasс: record !== undefined,
+      pass: record !== undefined,
       message: () => `Expected a record in \`${table}\` matching ${JSON.stringify(where)}, but none was found.`,
     };
   },
