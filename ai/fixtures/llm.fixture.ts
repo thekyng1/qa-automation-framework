@@ -7,6 +7,8 @@ import type { CaseResult, EvalCase, EvalReport, LlmAdapter } from '../types';
 // Scripted replies for mock mode (CI). Keyed by the [case:<id>] tag.
 const MOCK_REPLIES: Record<string, string> = {
   'refund-policy': '{"answer":"Orders can be returned within 30 days of delivery."}',
+  'shipping-cost': '{"answer":"Standard shipping is free for orders over 50 EUR, so your 60 EUR order ships for free."}',
+  'out-of-scope': '{"answer":"I am sorry, I cannot help with poems. I can only help with orders, shipping and returns."}',
   default: '{"answer":"mock"}',
 };
 
