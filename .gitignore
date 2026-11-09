@@ -6,3 +6,7 @@ pm-results/
 fixtures/db-runtime.json
 .env
 *.log
+
+ai-out.txt
+playwright-report.json
+
