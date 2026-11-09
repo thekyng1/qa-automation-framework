@@ -22,6 +22,7 @@ export default withPostman(defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
+  globalTimeout: 10 * 60 * 1000, // hard kill: un run blocat moare ca "interrupted", nu atarna la infinit
   workers: process.env.CI ? 2 : undefined,
 
   reporter: [
