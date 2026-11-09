@@ -32,7 +32,14 @@ async function waitForApp(timeoutMs = 30_000): Promise<void> {
 }
 
 export default async function globalSetup(): Promise<void> {
-  const db: MySQLDB = await createDB({ version: '8.4.x', dbName: 'app_test' });
+  const args = process.argv.slice(2).join(' ');
+  const onlyAi = args.includes('tests/ai') && !args.includes('tests/api') && !args.includes('tests/db');
+  if (onlyAi) {
+    console.log('[db.fixture] tests/ai only - skipping MySQL + test-app startup');
+    return;
+  }
+
+  const db: MySQLDB = await createDB({ version: '8.4.x', dbName: 'app_test', downloadBinaryOnce: true });
 
   const runtime = {
     host: '127.0.0.1',
