@@ -32,6 +32,7 @@ export interface EvalCase {
 }
 
 export interface CaseResult {
+  answer?: string;
   caseId: string;
   passed: boolean;
   errors: string[];

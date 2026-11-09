@@ -34,8 +34,10 @@ const CASES = [
 ];
 
 test.describe('AI layer — statistical thresholds, not single-shot luck', () => {
-  test('answers comply with schema, budget and grounding', async ({ eval: runEval }) => {
-    const result = await runEval(CASES, 5); // 5 runs -> passRate is meaningful
+  test('answers comply with schema, budget and grounding', async ({ eval: runEval }, testInfo) => {
+    const result = await runEval(CASES, 5);
+
+    testInfo.attach('ai-responses', { body: JSON.stringify(result), contentType: 'application/json' }); // 5 runs -> passRate is meaningful
 
     // Diagnostics FIRST: log failures before any assertion can abort the test.
     result.results.filter(r => !r.passed).forEach(r => {

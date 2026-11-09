@@ -48,6 +48,7 @@ export async function runCase(adapter: LlmAdapter, c: EvalCase): Promise<CaseRes
     caseId: c.id,
     passed: errors.length === 0,
     errors,
+    answer: response.text,
     latencyMs: response.latencyMs,
     tokensOut: response.tokensOut,
   };
