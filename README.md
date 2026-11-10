@@ -1,5 +1,7 @@
 # QA Automation Framework
 
+![QA Console — live ops](docs/console.png)
+
 Framework de testare automată în **buclă închisă pe trei straturi**: UI (Playwright), API (captură trafic cu `postman-playwright` + validare `pm.test` prin Postman CLI) și bază de date (MySQL, aserțiuni de persistență într-o conexiune separată de cea a aplicației).
 
 Clonat → `npm install` → `npm test`. Atât. Aplicația demo și MySQL-ul ephemeral sunt pornite automat de `globalSetup`.
