@@ -23,6 +23,12 @@ API-ul e verificat **capturând traficul generat chiar de pașii UI** — nu exi
 - **Local, oriunde**: clonat → `npm install` → `npm test`. Atât — aplicația demo și MySQL-ul ephemeral sunt pornite automat de `globalSetup`.
 - **Live ops**: consola din screenshot rulează pe un server Ubuntu (aarch64) ca serviciu `systemd`, cu jurnal live și istoric al run-urilor persistat în SQLite (`node:sqlite`). Acces se face prin SSH tunnel — fără expunere publică.
 
+### Consola (qa-console/)
+
+Codul consolei live din screenshot e în repo: server Express + `node:sqlite` + UI cu grafic de trend (pass/fail/durată) și curățenie automată a istoricului.
+Local, suita de teste nu depinde de ea — e componenta de live ops.
+Deploy: `npm install` în `qa-console/` + serviciu `systemd` legat de `127.0.0.1` (acces doar prin tunel SSH).
+
 ## Raport
 
 Playwright generează raport HTML la fiecare run (`playwright-report/`), mereu la zi cu ultimul run — vizibil direct din consola live.

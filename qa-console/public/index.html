@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>QA Ops Console — live</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+:root{--bg:#0b0f14;--panel:#11161d;--line:#1e2833;--tx:#c9d6e3;--dim:#5f7186;--ok:#38b24a;--err:#e5484d;--run:#3fa9f5;--warn:#f0b429}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 "JetBrains Mono",monospace}
+header{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--line)}
+header h1{font-size:16px;margin:0;color:#fff}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--ok);display:inline-block}
+.dot.err{background:var(--err)}
+#clock{margin-left:auto;color:var(--dim)}
+main{display:flex;gap:14px;padding:14px 20px;align-items:flex-start;flex-wrap:wrap}
+.col{flex:1;min-width:420px;display:flex;flex-direction:column;gap:14px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+.panel h2{margin:0 0 10px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+select,button{font:inherit;background:#0d1319;color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:8px 12px}
+button{cursor:pointer;background:#15304a;border-color:#1f4a73;color:#dff0ff;font-weight:700}
+button:disabled{opacity:.5;cursor:not-allowed}
+.badge{padding:3px 10px;border-radius:6px;font-weight:700}
+.badge.passed{background:#12331b;color:var(--ok)}
+.badge.failed{background:#3a1416;color:var(--err)}
+.badge.running{background:#0f2740;color:var(--run);animation:pulse 1.2s infinite}
+.badge.interrupted{background:#33290f;color:var(--warn)}
+@keyframes pulse{50%{opacity:.45}}
+table{width:100%;border-collapse:collapse}
+th,td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;font-size:13px}
+th{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.08em}
+tr.r{cursor:pointer} tr.r:hover{background:#141c26}
+tr.row-running td{background:#0d1b2a}
+tr.sel td{outline:1px solid var(--run)}
+#log{background:#070a0e;border:1px solid var(--line);border-radius:8px;padding:10px;height:300px;overflow-y:auto;font-size:12.5px}
+#log .ln{padding:1px 0;color:var(--dim)}
+#log .ok{color:var(--ok)} #log .err{color:var(--err)} #log .run{color:var(--run)}
+#log .ln b{color:#fff}
+#live{display:none}
+#live .big{font-size:22px;font-weight:700}
+#liveElapsed{font-size:26px;margin:8px 0;color:#fff}
+#detail ul{list-style:none;padding:0;margin:8px 0}
+#detail li{padding:5px 8px;border-left:3px solid var(--line);margin:4px 0;background:#0d1319}
+#detail li.passed{border-color:var(--ok)}
+#detail li.failed{border-color:var(--err)}
+#detail li.interrupted{border-color:var(--warn)}
+blockquote{margin:8px 0;padding:10px;background:#0d1319;border-left:3px solid var(--warn);color:#d8c99a;font-size:12.5px;white-space:pre-wrap}
+.mini{font-size:12px;color:var(--dim)}
+.chartwrap{height:160px;margin-top:12px}
+</style>
+</head>
+<body>
+<header><span class="dot" id="dot"></span><h1>QA Ops Console <span class="mini">— live</span></h1><span id="clock"></span></header>
+<main>
+ <div class="col">
+  <div class="panel">
+   <h2>Declanșare</h2>
+   <div class="bar">
+    <select id="suite">
+     <option value="tests/ai">tests/ai</option>
+     <option value="tests/orders-api.spec.ts">tests/orders-api.spec.ts</option>
+     <option value="all">toate</option>
+    </select>
+    <button id="go">▶ Rulează</button>
+    <span class="mini" id="lastSync"></span>
+   </div>
+  </div>
+  <div class="panel" id="live">
+   <h2>Run în curs</h2>
+   <div class="big"><span id="liveSuite"></span> <span class="badge running">RUNNING</span></div>
+   <div id="liveElapsed">0.0s</div>
+   <div class="mini" id="liveInfo"></div>
+  </div>
+  <div class="panel">
+   <h2>Jurnal live <button style="float:right;padding:2px 8px;font-size:11px" onclick="clearLog()">golește</button></h2>
+   <div id="log"></div>
+  </div>
+ </div>
+ <div class="col">
+  <div class="panel">
+   <h2>Istoric rulări <span class="mini" style="text-transform:none;letter-spacing:0">(click pe rând → detalii)</span> <button onclick="cleanHistory()" title="Păstrează doar ultimele 5 run-uri" style="margin-left:12px;padding:4px 10px;font:inherit;font-size:12px;background:#1a2330;color:#c9d6e3;border:1px solid var(--line);border-radius:6px;cursor:pointer">🧹 Curăță</button></h2>
+   <table><thead><tr><th>#</th><th>Start</th><th>Suită</th><th>Status</th><th>P/F/S</th><th>Durată</th></tr></thead>
+   <tbody id="rows"></tbody></table>
+   <div class="chartwrap"><canvas id="chart"></canvas></div>
+  </div>
+  <div class="panel">
+   <h2>Detalii run <a href="/report/" target="_blank" style="float:right;padding:2px 8px;font-size:11px" title="Raportul HTML Playwright al ultimului run">📄 Vezi raportul</a></h2>
+   <div id="detail" class="mini">selectează un run din tabel</div>
+  </div>
+ </div>
+</main>
+<script>
+const esc=s=>String(s).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+const fmtDur=v=>v==null?'—':(v>=600?(v/1000).toFixed(1):(+v).toFixed(1))+'s';
+const fmtStart=s=>{const d=new Date(s);return isNaN(d)?String(s):d.toLocaleString('ro-RO');};
+const $=id=>document.getElementById(id);
+const logEl=$('log');
+let runs=[],chart=null,sel=null,prev={};
+function llog(msg,cls){const t=new Date().toLocaleTimeString('ro-RO');logEl.insertAdjacentHTML('beforeend','<div class="ln '+(cls||'')+'">['+t+'] '+msg+'</div>');logEl.scrollTop=logEl.scrollHeight;}
+function clearLog(){logEl.innerHTML='';}
+
+function renderRows(){
+  $('rows').innerHTML=runs.map(r=>'<tr class="r'+(r.status==='running'?' row-running':'')+(sel===r.id?' sel':'')+'" onclick="loadDetail('+r.id+')">'
+   +'<td>'+r.id+'</td><td>'+esc(fmtStart(r.start))+'</td><td>'+esc(r.suite||'—')+'</td>'
+   +'<td><span class="badge '+(r.status||'')+'">'+(r.status||'?')+'</span></td>'
+   +'<td>'+(r.passed==null?'?':r.passed)+'/'+(r.failed==null?'?':r.failed)+'/'+(r.skipped==null?'?':r.skipped)+'</td>'
+   +'<td>'+fmtDur(r.duration_ms!=null?r.duration_ms:r.duration)+'</td></tr>').join('')||'<tr><td colspan="6" class="mini">niciun run</td></tr>';
+}
+
+function renderLive(){
+  const run=runs.find(r=>r.status==='running');
+  const p=$('live');
+  if(!run){p.style.display='none';return;}
+  p.style.display='block';
+  $('liveSuite').textContent=run.suite||'—';
+  const st=Date.parse(run.start);
+  $('liveInfo').textContent='run #'+run.id+(isNaN(st)?'':' · pornit la '+new Date(st).toLocaleString('ro-RO'));
+}
+
+function renderChart(){
+  const data=runs.slice(-15).reverse();
+  const labels=data.map(r=>'#'+r.id);
+  const p=data.map(r=>r.passed||0),f=data.map(r=>r.failed||0),s=data.map(r=>r.skipped||0);
+  const d=data.map(r=>Math.round((r.duration_ms||0)/100)/10);
+  if(!chart){
+    chart=new Chart($('chart'),{type:'bar',data:{labels:labels,datasets:[
+      {label:'passed',data:p,backgroundColor:'#38b24a',stack:'g'},
+      {label:'failed',data:f,backgroundColor:'#e5484d',stack:'g'},
+      {label:'skipped',data:s,backgroundColor:'#f0b429',stack:'g'},
+      {label:'durată (s)',data:d,type:'line',yAxisID:'y1',borderColor:'#4f9cf9',borderWidth:2,tension:.3,pointRadius:2}]},
+      options:{responsive:true,maintainAspectRatio:false,animation:false,
+        plugins:{legend:{labels:{color:'#5f7186',boxWidth:8}}},
+        scales:{x:{stacked:true,ticks:{color:'#5f7186'},grid:{display:false}},
+                y:{stacked:true,ticks:{color:'#5f7186',stepSize:1},grid:{color:'#1e2833'}},
+                y1:{position:'right',ticks:{color:'#4f9cf9',callback:function(v){return v+'s'}},grid:{display:false}}}}});
+  }else{
+    chart.data.labels=labels;
+    chart.data.datasets[0].data=p;chart.data.datasets[1].data=f;chart.data.datasets[2].data=s;chart.data.datasets[3].data=d;
+    chart.update('none');
+  }
+}
+
+async function refresh(){
+  try{
+    const data=await(await fetch('/api/runs')).json();
+    const list=Array.isArray(data)?data:(data.runs||[]);
+    for(const r of list){
+      const o=prev[r.id];
+      if(o===undefined&&r.status==='running') llog('<b>run #'+r.id+'</b> pornit · '+esc(r.suite||''),'run');
+      else if(o!==undefined&&o!==r.status)
+        llog('<b>run #'+r.id+'</b> → <b>'+r.status+'</b> · '+ (r.passed==null?'?':r.passed)+'/'+(r.failed==null?'?':r.failed)+'/'+(r.skipped==null?'?':r.skipped)+' · '+fmtDur(r.duration_ms!=null?r.duration_ms:r.duration),
+             r.status==='passed'?'ok':(r.status==='failed'?'err':''));
+      prev[r.id]=r.status;
+    }
+    if(!refresh.init){refresh.init=1;llog('conectat la API · '+list.length+' run-uri în istoric','ok');}
+    runs=list.map(r=>({...r,duration:r.duration_ms,start:r.started_at,ts:r.started_at}));
+    renderRows();renderLive();renderChart();
+    $('lastSync').textContent='sync '+new Date().toLocaleTimeString('ro-RO');
+    $('dot').classList.remove('err');
+  }catch(e){$('dot').classList.add('err');llog('eroare API: '+esc(e.message),'err');}
+}
+
+async function loadDetail(id){
+  sel=id;renderRows();
+  $('detail').innerHTML='<span class="mini">se încarcă…</span>';
+  try{
+    const d=await(await fetch('/api/runs/'+id+'/summary')).json();
+    const tests=d.tests||[];
+    const ais=tests.filter(t=>t.ai);
+    const cls=st=>st==='expected'||st==='passed'?'passed':(st==='failed'?'failed':(st==='interrupted'?'interrupted':''));
+    $('detail').innerHTML=
+      '<div style="font-size:16px;font-weight:700;margin-bottom:6px">Run #'+d.id+' — <span class="badge '+(d.status||'')+'">'+(d.status||'?')+'</span></div>'
+      +(tests.length?'<ul>'+tests.map(t=>'<li class="'+cls(t.status)+'">'+esc(t.title)+' — '+(t.status||'?')
+        +(t.duration!=null?' ('+(t.duration/1000).toFixed(1)+'s)':'')+'</li>').join('')+'</ul>'
+       :'<div class="mini">raport indisponibil</div>')
+      +(ais.length?'<h2 style="margin-top:12px">Răspunsuri AI</h2>'
+        +ais.map(t=>'<div class="mini">'+esc(t.title)+'</div><blockquote>'+esc(t.ai)+'</blockquote>').join(''):'');
+  }catch(e){$('detail').innerHTML='<span class="mini" style="color:#e5484d">raport indisponibil</span>';}
+}
+
+$('go').onclick=async()=>{
+  const suite=$('suite').value;
+  $('go').disabled=true;
+  llog('▶ declanșez <b>'+esc(suite)+'</b> …');
+  try{
+    const res=await fetch('/api/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({suite:suite})});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    llog('cerere acceptată de server — urmăresc run-ul…','ok');
+    refresh();
+  }catch(e){llog('eroare declanșare: '+esc(e.message),'err');}
+  finally{$('go').disabled=false;}
+};
+
+setInterval(function(){const d=new Date();$('clock').textContent=d.toLocaleDateString('ro-RO')+' · '+d.toLocaleTimeString('ro-RO');},1000);
+setInterval(function(){const run=runs.find(r=>r.status==='running');
+  if(run){const st=Date.parse(run.start);
+    if(!isNaN(st))$('liveElapsed').textContent=((Date.now()-st)/1000).toFixed(1)+'s';}},250);
+refresh();
+setInterval(refresh, 3000);
+</script>
+<script>async function cleanHistory(){const rs=await(await fetch("/api/runs?limit=50")).json();if(rs.find(r=>r.status==="running"))return alert("Există un run în curs — așteaptă.");if(rs.length<=5)return alert("Nimic de curățat: doar "+rs.length+" run-uri.");const cut=rs[4].id;if(!confirm("Șterg "+(rs.length-5)+" run-uri mai vechi de #"+cut+"?"))return;const res=await(await fetch("/api/runs/before/"+cut,{method:"DELETE"})).json();llog("🧹 curățat: "+res.deleted+" run-uri șterse");}</script></body>
+</html>
