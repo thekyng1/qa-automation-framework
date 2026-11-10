@@ -35,7 +35,9 @@ Playwright generează raport HTML la fiecare run (`playwright-report/`), mereu l
 
 ## Roadmap
 
-- grafic de trend în consola live (pass/fail/durată în timp)
-- curățenie automată a istoricului
+Livrate:
+
+- [x] grafic de trend în consola live (pass/fail/durată în timp)
+- [x] curățenie automată a istoricului
 
 
