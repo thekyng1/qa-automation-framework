@@ -8,3 +8,8 @@ fixtures/db-runtime.json
 *.log
 ai-out.txt
 playwright-report.json
+qa-console/data/
+qa-console/node_modules/
+node_modules/
+test-results/
+playwright-report/
