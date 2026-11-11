@@ -33,9 +33,9 @@ async function waitForApp(timeoutMs = 30_000): Promise<void> {
 
 export default async function globalSetup(): Promise<void> {
   const args = process.argv.slice(2).join(' ');
-  const onlyAi = args.includes('tests/ai') && !args.includes('tests/api') && !args.includes('tests/db');
+  const onlyAi = (args.includes('tests/ai') || args.includes('tests/compleacte')) && !args.includes('tests/api') && !args.includes('tests/db');
   if (onlyAi) {
-    console.log('[db.fixture] tests/ai only - skipping MySQL + test-app startup');
+    console.log('[db.fixture] DB-free suite (ai/compleacte) - skipping MySQL + test-app startup');
     return;
   }
 
