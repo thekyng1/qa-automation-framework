@@ -72,7 +72,7 @@ app.get('/api/runs/:id/summary', (req, res) => {
 
 app.post('/api/run', (req, res) => {
   if (current) return res.status(409).json({ error: 'exista deja o rulare in curs' });
-  const suite = ['tests/ai', 'tests/orders-api.spec.ts', 'all'].includes(req.body?.suite) ? req.body.suite : 'tests/ai';
+  const suite = ['tests/ai', 'tests/compleacte', 'tests/orders-api.spec.ts', 'all'].includes(req.body?.suite) ? req.body.suite : 'tests/ai';
   const id = startRun(suite);
   const child = spawn('npx', ['playwright', 'test', ...(suite === 'all' ? [] : [suite])], { cwd: FW_DIR });
   current = { child, id };
