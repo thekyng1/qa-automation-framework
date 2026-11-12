@@ -16,11 +16,13 @@ import type { AddressInfo } from 'node:net';
  *    alert('Eroare la generare: '+e.message), iar lipsa formularului devine
  *    alert('Nu există formular încărcat.');
  *  - numele fișierului: (def.id||'formular')+'-'+ISO AAAA-LL-ZZ+'.pdf';
- *  - în browser (fără Capacitor — cazul nostru, headless Chromium) merge pe
- *    fallback: Blob([bytes]) + URL.createObjectURL + a.download + a.click(),
- *    deci Playwright prinde descărcarea cu page.waitForEvent('download');
- *  - template-ul PDF vine din forms/*.inline.js (bytes embedați în pagină,
- *    completare prin completeazaFormular) — fără fetch de rețea externă.
+ *  - în browser (fără Capacitor) merge pe fallback: Blob + URL.createObjectURL
+ *    + a.download + a.click(), deci Playwright prinde cu waitForEvent('download').
+ *
+ * DIAGNOSTIC: dacă descărcarea nu apare, cel mai probabil motivul e o alertă
+ * „Eroare la generare: ..." respinsă automat (și mut) de Playwright. Testele
+ * pozitive colectează dialogurile + erorile de consolă și le includ în
+ * mesajul de failure — feedback real, nu ghicire.
  *
  * www/ NU e în repo (cheie API hardcodată); override: COMPLEACTE_WWW=/cale.
  * Fără folder (ex. CI) → SKIP, nu FAIL.
@@ -108,6 +110,24 @@ async function apeleazaGlobal(page: Page, nume: string) {
 }
 
 /**
+ * Colectează dialogurile, erorile de paginăă și erorile de consolă, ca la
+ * timeout-ul descărcării mesajul de failure să conțină motivul REAL
+ * (ex. alerta „Eroare la generare: ...", respinsă altfel automat și mut).
+ */
+function colecteazaSemnale(page: Page): string[] {
+  const semnale: string[] = [];
+  page.on('dialog', async (d) => {
+    semnale.push(`dialog ${d.type()}: ${d.message()}`);
+    await d.accept();
+  });
+  page.on('pageerror', (e) => semnale.push(`pageerror: ${e.message}`));
+  page.on('console', (m) => {
+    if (m.type() === 'error') semnale.push(`console.error: ${m.text()}`);
+  });
+  return semnale;
+}
+
+/**
  * Flux complet până pe ecranul 3 cu date valide:
  * acord → Continuă → completează tot → laVerificare() (intrare chirurgicală,
  * DEFECT-001) → #btnGenereaza deblocat de valideaza().
@@ -126,6 +146,7 @@ test.describe('CompleActe — genereazaContract() (PDF)', () => {
   test.skip(APP_MISSING, `app-ul nu există la ${APP_DIR} — rulare doar pe server`);
 
   test('descărcare: click pe #btnGenereaza produce un fișier cu numele corect', async ({ page }) => {
+    const semnale = colecteazaSemnale(page);
     await intrareVerificareCuDate(page);
 
     const defId = await page.evaluate(() =>
@@ -136,7 +157,11 @@ test.describe('CompleActe — genereazaContract() (PDF)', () => {
     const [download] = await Promise.all([
       page.waitForEvent('download', { timeout: 30_000 }),
       page.locator('#btnGenereaza').click(),
-    ]);
+    ]).catch(() => {
+      throw new Error(
+        `descărcarea nu a apărut în 30s. Semnale din pagină: ${semnale.length ? semnale.join(' || ') : 'niciunul'}`
+      );
+    });
 
     expect(download.suggestedFilename(), 'numele provine din a.download, construit din def.id + data ISO').toMatch(
       new RegExp(`^${defId}-${azi}\\.pdf$`)
@@ -144,12 +169,17 @@ test.describe('CompleActe — genereazaContract() (PDF)', () => {
   });
 
   test('conținut: fișierul descărcat este un PDF real (magic bytes %PDF, nevid)', async ({ page }) => {
+    const semnale = colecteazaSemnale(page);
     await intrareVerificareCuDate(page);
 
     const [download] = await Promise.all([
       page.waitForEvent('download', { timeout: 30_000 }),
       page.locator('#btnGenereaza').click(),
-    ]);
+    ]).catch(() => {
+      throw new Error(
+        `descărcarea nu a apărut în 30s. Semnale din pagină: ${semnale.length ? semnale.join(' || ') : 'niciunul'}`
+      );
+    });
 
     const caleTemp = path.join(os.tmpdir(), `compleacte-${Date.now()}.pdf`);
     await download.saveAs(caleTemp);
@@ -164,8 +194,6 @@ test.describe('CompleActe — genereazaContract() (PDF)', () => {
     await intrareVerificareCuDate(page);
 
     // Guard-ul din index.html: if(!def){ alert('Nu există formular încărcat.'); return; }
-    // Simulăm starea imposibilă prin UI normal (formularul e deja încărcat):
-    // o deteriorăm explicit, ca un test de rezistență al guard-ului.
     await page.evaluate(() => {
       (window as unknown as { DEFINITIE_FORMULAR: unknown }).DEFINITIE_FORMULAR = null;
     });
@@ -181,8 +209,6 @@ test.describe('CompleActe — genereazaContract() (PDF)', () => {
   test('negativ: eroare din completeazaFormular() devine alertă, nu crash mut', async ({ page }) => {
     await intrareVerificareCuDate(page);
 
-    // Deteriorăm generatorul ca try/catch-ul din genereazaContract() să prindă:
-    // catch(e){ alert('Eroare la generare: '+e.message); }
     const suprascris = await page.evaluate(() => {
       const w = window as unknown as Record<string, unknown>;
       if (typeof w.completeazaFormular !== 'function') return false;
