@@ -102,7 +102,7 @@ async function ecranDate(page: Page) {
   ).toBeGreaterThan(0);
 }
 
-/** Apelează o funcție globală din index.html, cu mesaj clar dacă nu există. */
+/** Apelează o funcție globală fără argumente din index.html, cu mesaj clar dacă nu există. */
 async function apeleazaGlobal(page: Page, nume: string) {
   await page.evaluate((n) => {
     const f = (window as unknown as Record<string, unknown>)[n];
@@ -170,7 +170,11 @@ test.describe('CompleActe — ecranul 3 (Verificare)', () => {
 
     // arata(3) a ascuns #s2 (clasa «ascuns»); app-ul nu are buton «înapoi»
     // (DEFECT-001), deci ne întoarcem chirurgical pe ecranul 2 ca să completăm.
-    await apeleazaGlobal(page, 'arata2');
+    await page.evaluate(() => {
+      const f = (window as unknown as { arata?: (n: number) => void }).arata;
+      if (typeof f !== 'function') throw new Error('arata nu există pe window');
+      f(2);
+    });
 
     for (const cheie of CHEI_OBLIGATORII) {
       await page.locator(`#s2 [data-pdf="${cheie}"]`).fill(VALORI_TEST[cheie]);
