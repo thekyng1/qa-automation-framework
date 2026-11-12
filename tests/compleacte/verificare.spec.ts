@@ -20,7 +20,9 @@ import type { AddressInfo } from 'node:net';
  *  - #s3 conține oglinzi readonly ale câmpurilor din #s2 (data-pdf identic);
  *  - wrapperul fix-s3-copiere copiază valorile s2 → s3 înainte de arata(3);
  *  - valideaza() blochează/deblochează #btnGenereaza și comută #avertisment
- *    (element confirmat la linia 81 din index.html).
+ *    (element confirmat la linia 81 din index.html);
+ *  - arata(3) adaugă clasa «ascuns» pe #s2 — orice fill() pe câmpurile din #s2
+ *    cere întoarcerea chirurgicală cu arata(2) (app-ul nu are buton «înapoi»).
  *
  * Serverul static e identic cu cel din date.spec.ts (port aleator, nimic permanent).
  * www/ NU e în repo (cheie API hardcodată în index.html).
@@ -100,6 +102,15 @@ async function ecranDate(page: Page) {
   ).toBeGreaterThan(0);
 }
 
+/** Apelează o funcție globală din index.html, cu mesaj clar dacă nu există. */
+async function apeleazaGlobal(page: Page, nume: string) {
+  await page.evaluate((n) => {
+    const f = (window as unknown as Record<string, unknown>)[n];
+    if (typeof f !== 'function') throw new Error(`${n} nu există pe window`);
+    (f as () => void)();
+  }, nume);
+}
+
 /**
  * Completează (opțional) câmpurile obligatorii din #s2, apoi intră pe ecranul 3
  * chirurgical: apelează laVerificare() — exact ce ar face butonul lipsă (DEFECT-001).
@@ -112,11 +123,7 @@ async function intrareVerificare(page: Page, completa = true) {
       await page.locator(`#s2 [data-pdf="${cheie}"]`).fill(VALORI_TEST[cheie]);
     }
   }
-  await page.evaluate(() => {
-    const f = (window as unknown as { laVerificare?: () => void }).laVerificare;
-    if (typeof f !== 'function') throw new Error('laVerificare nu există pe window');
-    f();
-  });
+  await apeleazaGlobal(page, 'laVerificare');
   await expect(page.locator('#s3')).toBeVisible();
 }
 
@@ -158,17 +165,19 @@ test.describe('CompleActe — ecranul 3 (Verificare)', () => {
 
   test('randare: câmpurile .gresit din #s2 sunt curățate după validare cu succes', async ({ page }) => {
     await intrareVerificare(page, false);
-    // date incomplete ⇒ valideaza() marchează .gresit
+    // date incomplete ⇒ valideaza() (apelat de wrapperul laVerificare) marchează .gresit
     await expect(page.locator('#s2 .gresit').first()).toBeAttached();
-    // completăm acum toate câmpurile obligatorii și revalidăm
+
+    // arata(3) a ascuns #s2 (clasa «ascuns»); app-ul nu are buton «înapoi»
+    // (DEFECT-001), deci ne întoarcem chirurgical pe ecranul 2 ca să completăm.
+    await apeleazaGlobal(page, 'arata2');
+
     for (const cheie of CHEI_OBLIGATORII) {
       await page.locator(`#s2 [data-pdf="${cheie}"]`).fill(VALORI_TEST[cheie]);
     }
-    await page.evaluate(() => {
-      const f = (window as unknown as { valideaza?: () => void }).valideaza;
-      if (typeof f !== 'function') throw new Error('valideaza nu există pe window');
-      f();
-    });
+    await apeleazaGlobal(page, 'valideaza');
+
     await expect(page.locator('#s2 .gresit')).toHaveCount(0);
+    await expect(page.locator('#avertisment')).toBeHidden();
   });
 });
