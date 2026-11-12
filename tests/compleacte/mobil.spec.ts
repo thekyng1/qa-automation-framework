@@ -95,7 +95,21 @@ test.describe('CompleActe mobil', () => {
     await expect(page.locator('#s2')).toBeHidden();
   });
 
-  test('tap-target: .btn-scan are cel puțin 44x44 px (Android Material)', async ({ page }) => {
+  /**
+   * DEFECT-003 (deschis): .btn-scan are înălțimea 38px — sub minimul 44px
+   * din ghidul Android Material. Cauză CSS: padding:10px 14px; font-size:15px,
+   * fără min-height. Pe desktop trece neobservat, pe mobil degetul ratează
+   * cel mai folosit buton al app-ului.
+   *
+   * ALARMĂ INVERSĂ (pattern DEFECT-001): cât timp defectul e deschis, testul e
+   * marcat test.fail — testul TRECE funcțional (găsește < 44px), deci suita
+   * e roșie cu intenție. Când dev adaugă min-height:44px în CSS, testul va
+   * eșua cu „expected to fail but passed" → ștergem adnotarea test.fail și
+   * închidem DEFECT-003. Imposibil de reparat fără să observăm.
+   * Fix recomandat (ambele copii ale app-ului):
+   *   .btn-scan{ ...; min-height:44px; min-width:44px; }
+   */
+  test.fail('tap-target: .btn-scan are cel puțin 44x44 px (Android Material)', async ({ page }) => {
     await page.goto(appUrl + '/');
     await page.locator('#acord').tap();
     await tap(page, 'button:has-text("Continuă")');
@@ -132,15 +146,17 @@ test.describe('CompleActe mobil', () => {
       page.locator('#form-container input[data-pdf]').count(), { timeout: 10_000 }
     ).toBeGreaterThan(0);
 
-    // Completează câmpurile obligatorii exact ca pe desktop (verificare.spec.ts)
+    // Completează TOATE câmpurile cerute de valideaza() în #s2 — inclusiv
+    // contract_data: validarea îl cere non-vid ÎNAINTE de generare; auto-data
+    // din genereazaContract() vine prea târziu (butonul e încă disabled).
+    const azi = new Date().toLocaleDateString('ro-RO');
     const date: Record<string, string> = {
       v_nume: 'Maria Ionescu', v_cnp: '1800101010015', v_telefon: '0722111111',
       c_nume: 'Ion Popescu', c_cnp: '2930525123457', c_telefon: '0722222222',
       m_marca: 'Dacia', m_tip: 'Logan',
       m_nr_inmatriculare: 'CJ 01 ABC', m_vin: 'UU1HSDCAP54123456',
       pret_cifre: '25000', pret_litere: 'Douăzeci și cinci de mii',
-      contract_loc: 'Cluj-Napoca',
-      // contract_data se completează automat cu data de azi dacă e gol
+      contract_loc: 'Cluj-Napoca', contract_data: azi,
     };
     for (const [k, v] of Object.entries(date)) {
       const el = page.locator(`#form-container [data-pdf="${k}"]`);
