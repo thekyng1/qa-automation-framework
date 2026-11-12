@@ -145,6 +145,9 @@ test.describe('CompleActe · Scanare OCR', () => {
   test('pură: MRZ.dinText parsează banda MRZ sintetică (nume, CNP valid, serie, nr act)', async ({ page }) => {
     await page.goto(appUrl + '/');
     const r = await page.evaluate(() => {
+      /* Format TD1 linia 1: IDRO + cod țară (XX = necunoscut/test) + serie act (AB)
+         + număr act (1234567). Regexul real: /^I?DRO[A-Z]{0,3}([A-Z]{2,3})<?([A-Z0-9]{4,8})/
+         → țara XX se consumă în [A-Z]{0,3}, seria capturată e AB, nr act 1234567. */
       const TEXT_MRZ = [
         'IDROXXAB1234567<<<<<<<<<<<<<',
         '1800101010015<012345678901234<',
@@ -156,7 +159,7 @@ test.describe('CompleActe · Scanare OCR', () => {
     expect(r.date.nume).toBe('IONESCU');
     expect(r.date.prenume).toBe('MARIA');
     expect(r.date.cnp).toBe('1800101010015');
-    expect(r.date.serie).toBe('XX');
+    expect(r.date.serie).toBe('AB');
     expect(r.date.nrAct).toBe('1234567');
   });
 
@@ -310,7 +313,8 @@ test.describe('CompleActe · Scanare OCR', () => {
     /* Ipoteză de verificat: SCUI.init() rulează la DOMContentLoaded, DAR butoanele
        de scanare sunt randate asincron de form-engine (fetch + render în #form-container).
        Dacă initul nu se re-apelează după încărcarea formularului, onclick nu e legat
-       → filechooser nu apare → timeout → DEFECT (cronometrarea init). */
+       → filechooser nu apare → timeout → DEFECT (cronometrarea init).
+       Rezultat la prima rulare: TRECE — cronometrarea e corectă, nu există DEFECT-003. */
     const alegere = page.waitForEvent('filechooser', { timeout: 5_000 });
     await btn.click();
     await alegere;
