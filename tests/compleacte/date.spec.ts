@@ -129,7 +129,7 @@ test.describe('CompleActe — ecranul 2 (Date)', () => {
    * „expected to fail but passed” — atunci ștergem adnotarea test.fail
    * și închidem DEFECT-001. Alarmă automată inversă.
    */
-  test.fail('DEFECT-001: formularul are buton spre ecranul «Verificare»', async ({ page }) => {
+  test('DEFECT-001: formularul are buton spre ecranul «Verificare»', async ({ page }) => {
     await ecranDate(page);
     const btnContinua = page.locator('#s2 button:not(.btn-scan)');
     await expect(
