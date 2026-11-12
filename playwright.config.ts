@@ -16,13 +16,18 @@ import { withPostman } from 'postman-playwright';
  * NOTE: do NOT add testMatch/grep filters to "force green". The suite is
  * small (6 tests) and every test is a required acceptance criterion. If CI
  * is red, debug the root cause in the run logs — never narrow the suite.
+ *
+ * NOTE (mobile, PR ciclul mobil): proiectul `mobile-chrome` rulează ÎNTREAGA
+ * suită, nu doar CompleActe — la fel ca `chromium`. Suitele mobile adaugă
+ * tap-target/touch peste aceeași acoperire; dacă CI depășește globalTimeout,
+ * se ridică timeout-ul, NU se îngustează suita (regula de mai sus se aplică).
  */
 export default withPostman(defineConfig({
   testDir: './tests',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  globalTimeout: 10 * 60 * 1000, // hard kill: un run blocat moare ca "interrupted", nu atarna la infinit
+  globalTimeout: 20 * 60 * 1000, // ridicat de la 10 min: 2 proiecte (desktop + mobil) în CI cu workers:2 — mai bine timeout mare decât suite îngustată
   workers: process.env.CI ? 2 : undefined,
 
   reporter: [
@@ -42,6 +47,9 @@ export default withPostman(defineConfig({
 
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    // Pixel 7: hasTouch + isMobile + viewport 412x915 — Capacitor WebView
+    // e ținta naturală a app-ului; .btn-scan pe touch e riscul acoperit aici.
+    { name: 'mobile-chrome', use: { ...devices['Pixel 7'] } },
   ],
 
   globalSetup: './fixtures/db.fixture.ts',
