@@ -65,6 +65,20 @@ async function dimensiune(page: import('@playwright/test').Page, selector: strin
   });
 }
 
+/** Aceleași greutăți ca în validCNP() din index.html. */
+const GREUTATI_CNP = [2, 7, 9, 1, 4, 6, 3, 5, 8, 2, 7, 9] as const;
+
+/** Generează un CNP valid cu algoritmul aplicației — ca în verificare.spec.ts.
+ *  Lecția din run #5: CNP hardcodat „de mână" poate avea checksum greșit
+ *  (2930525123457 → cifra corectă e 1, nu 7) și valideaza() îl respinge. */
+function cnpValid(baza12: string): string {
+  if (!/^\d{12}$/.test(baza12)) throw new Error('baza12 trebuie să aibă exact 12 cifre');
+  let s = 0;
+  for (let i = 0; i < 12; i++) s += Number(baza12[i]) * GREUTATI_CNP[i];
+  const cd = s % 11;
+  return baza12 + String(cd === 10 ? 1 : cd);
+}
+
 test.describe('CompleActe mobil', () => {
   test.skip(APP_MISSING, `app-ul nu există la ${APP_DIR} — rulare doar pe server`);
   test.skip(() => !test.info().project.name.startsWith('mobile'), 'doar în proiectul mobile-chrome');
@@ -149,10 +163,12 @@ test.describe('CompleActe mobil', () => {
     // Completează TOATE câmpurile cerute de valideaza() în #s2 — inclusiv
     // contract_data: validarea îl cere non-vid ÎNAINTE de generare; auto-data
     // din genereazaContract() vine prea târziu (butonul e încă disabled).
+    // CNP-urile sunt GENERATE cu cnpValid() (algoritmul app-ului), nu
+    // hardcodate — un checksum greșit „de mână" face valideaza() să respingă.
     const azi = new Date().toLocaleDateString('ro-RO');
     const date: Record<string, string> = {
-      v_nume: 'Maria Ionescu', v_cnp: '1800101010015', v_telefon: '0722111111',
-      c_nume: 'Ion Popescu', c_cnp: '2930525123457', c_telefon: '0722222222',
+      v_nume: 'Maria Ionescu', v_cnp: cnpValid('1800101010015'.slice(0, 12)), v_telefon: '0722111111',
+      c_nume: 'Ion Popescu', c_cnp: cnpValid('293052512345'.slice(0, 12)), c_telefon: '0722222222',
       m_marca: 'Dacia', m_tip: 'Logan',
       m_nr_inmatriculare: 'CJ 01 ABC', m_vin: 'UU1HSDCAP54123456',
       pret_cifre: '25000', pret_litere: 'Douăzeci și cinci de mii',
