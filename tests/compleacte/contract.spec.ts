@@ -11,19 +11,25 @@ import type { AddressInfo } from 'node:net';
  * Context DEFECT-001: intrarea pe ecranul 3 rămâne chirurgicală
  * (laVerificare() prin page.evaluate), identic cu verificare.spec.ts.
  *
- * Context DEFECT-002 (descoperit de această suită, 2026-11-12):
+ * Context DEFECT-002 (descoperit de această suită, 2026-11-12; REZOLVAT 2026-11-12):
  *  pdf-lib cu font standard folosește encodarea WinAnsi, care NU conține
- *  ș (U+0219) și ț (U+021B). Orice date cu ș/ț (ex. „București") fac
+ *  ș (U+0219) și ț (U+021B). Orice date cu ș/ț (ex. „București") făceau
  *  completeazaFormular() să arunce: WinAnsi cannot encode "ș" — prins de
  *  catch-ul din genereazaContract() și transformat în alertă, deci ZERO
  *  descărcare pentru utilizatorul real.
  *
+ *  Fix-ul dev-ului (2026-11-12): `doc.registerFontkit(window.fontkit)` apelat
+ *  efectiv în pdf-generator.js înainte de embedFont — fontul TTF embedded
+ *  (lib/fonts/arial.ttf, cu diacritice) ajungea deja la form.updateFieldAppearances,
+ *  dar embedFont arunca tăcut (prin .catch(()=>null)) pentru că registerFontkit
+ *  era doar verificat în condiție, niciodată apelat. Alarmă inversă a declanșat:
+ *  „expected to fail but passed" → test promovat în regresie permanentă.
+ *
  *  Consecință pe suită:
- *   - testele pozitive folosesc VALORI_ASCII (fără ș/ț) — dovedesc că fluxul
- *     complet de descărcare funcționează când datele sunt WinAnsi-safe;
- *   - DEFECT-002 are propriul test.fail care documentează defectul; când dev
- *     repară (font Unicode embeduit), testul „trece" și suita pică cu
- *     „fix-me" — semnalul standard de a scoate marcajul.
+ *   - testele 1–2 folosesc VALORI_ASCII — dovedesc fluxul complet de descărcare;
+ *   - DEFECT-002 are propriul test de REGRESIE: cu „București" (ș/ț) PDF-ul
+ *     TREBUIE să se descarce, fără nicio alertă de eroare. Dacă fontul
+ *     standard WinAnsi revine vreodată, testul pică cu mesajul real din pagină.
  *
  * Fapte din index.html (citite, nu presupuse — 2026-11-12, liniile 138–162):
  *  - numele fișierului: (def.id||'formular')+'-'+ISO AAAA-LL-ZZ+'.pdf';
@@ -90,9 +96,8 @@ function cnpValid(baza12: string): string {
 
 /**
  * Două seturi de date, ambele valide pentru valideaza():
- *  - VALORI_ASCII: fără ș/ț — singura variantă care trece prin pdf-lib azi
- *    (font standard WinAnsi);
- *  - VALORI_REALISTE: cu „București" — declanșează DEFECT-002.
+ *  - VALORI_ASCII: fără ș/ț — varianta istoric WinAnsi-safe;
+ *  - VALORI_REALISTE: cu „București" — regresia DEFECT-002 (font Unicode embedded).
  */
 const VALORI_ASCII: Record<(typeof CHEI_OBLIGATORII)[number], string> = {
   v_nume: 'Popescu Ion', v_cnp: cnpValid('193062512345'), v_telefon: '0722111222',
@@ -144,7 +149,7 @@ function colecteazaSemnale(page: Page): string[] {
 }
 
 /**
- * Flux complet până pe ecranul 3 cu date valide (implicit ASCII — vezi DEFECT-002):
+ * Flux complet până pe ecranul 3 cu date valide (implicit ASCII):
  * acord → Continuă → completează tot → laVerificare() (intrare chirurgicală,
  * DEFECT-001) → #btnGenereaza deblocat de valideaza().
  */
@@ -209,22 +214,34 @@ test.describe('CompleActe — genereazaContract() (PDF)', () => {
     fs.rmSync(caleTemp, { force: true });
   });
 
-  test('DEFECT-002: ș/ț în date → alertă WinAnsi, fără descărcare (test.fail până la fix)', async ({ page }) => {
-    test.fail(true, 'DEFECT-002: pdf-lib WinAnsi nu encodează ș (U+0219) / ț (U+021B) — așteptăm fix-ul dev-ului');
+  /**
+   * DEFECT-002 — REGRESIE (a fost test.fail cât timp defectul era deschis).
+   * Cu „București" (ș U+0219 / ț U+021B) PDF-ul TREBUIE să se descarce.
+   * Fontul TTF embedded prin registerFontkit+embedFont acoperă diacriticele;
+   * dacă fontul standard WinAnsi revine vreodată, testul pică cu mesajul
+   * real din pagină (dialog alert: WinAnsi cannot encode ...).
+   */
+  test('DEFECT-002: ș/ț în date → PDF-ul se generează cu diacritice, fără alertă', async ({ page }) => {
     const semnale = colecteazaSemnale(page);
     await intrareVerificareCuDate(page, VALORI_REALISTE);
 
-    const dialogAlerta = page.waitForEvent('dialog', { timeout: 30_000 });
-    await page.locator('#btnGenereaza').click();
-    const dialog = await dialogAlerta;
+    const [download] = await Promise.all([
+      page.waitForEvent('download', { timeout: 30_000 }),
+      page.locator('#btnGenereaza').click(),
+    ]).catch(() => {
+      throw new Error(
+        `descărcarea nu a apărut în 30s cu date ce conțin ș/ț — a revenit fontul WinAnsi? ` +
+        `Semnale din pagină: ${semnale.length ? semnale.join(' || ') : 'niciunul'}`
+      );
+    });
 
-    expect(dialog.type()).toBe('alert');
-    expect(dialog.message(), 'mesajul exact al erorii pdf-lib, prins de catch-ul din genereazaContract()').toContain('Eroare la generare: WinAnsi cannot encode');
-    await dialog.accept();
+    expect(download.suggestedFilename(), 'contractul cu diacritice se descarcă normal').toMatch(/\.pdf$/);
 
-    // cât timp DEFECT-002 există, descărcarea NU are cum să apară pe data cu ș;
-    // semnalele colectate documentează comportamentul în failure message.
-    expect(semnale.length).toBeGreaterThan(0);
+    const alerteEroare = semnale.filter((s) => s.startsWith('dialog alert: Eroare la generare'));
+    expect(
+      alerteEroare,
+      'niciun alert de eroare nu e acceptabil acum — dacă WinAnsi revine, mesajul real apare aici'
+    ).toEqual([]);
   });
 
   test('negativ: fără formular încărcat, genereazaContract() avertizează, nu crapă', async ({ page }) => {
