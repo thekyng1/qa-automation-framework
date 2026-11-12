@@ -7,7 +7,7 @@ Document viu: ce am livrat, în ce ordine, cu ce rezultat. Se actualizează la f
 - Toate PR-urile sunt **merge-uite în `main`**, CI **verde** (ultima rulare CI pe branch: ~1 min).
 - Consola QA rulează pe server (systemd, `127.0.0.1:3200`, acces doar prin tunel SSH).
 - Repo-ul e sursa de adevăr; serverul se sincronizează din repo.
-- Suita CompleActe: **19/19 passed** pe `main` (32.9s) — toate ecranele + generarea PDF acoperite.
+- Suita CompleActe: **30/30 passed** pe `main` — toate ecranele + generarea PDF + **scanarea OCR** acoperite cap-coadă.
 - DEFECT-001 (lipsa butonului spre «Verificare») și DEFECT-002 (ș/ț omoară generarea PDF) rămân deschise, fiecare sub observație automată dublă (teste `test.fail`).
 
 ## Livrat, în ordine
@@ -70,11 +70,27 @@ Document viu: ce am livrat, în ce ordine, cu ce rezultat. Se actualizează la f
 - **Suita descoperă defecte de produs, nu doar le confirmă**: cu date realiste („București"), suita a găsit un blocaj pe care niciun test cu date ASCII nu l-ar fi prins — alegerea datelor de test e ea însăși o decizie de design.
 - **Documentează defectul în cod, cu alarmă**: un `test.fail` cu mesajul exact așteptat transformă remedierea dev-ului în eveniment observabil automat — „expected to fail but passed" e semnalul, nu un eșec al suitei.
 
+### 9. Suita scanării OCR (PR #17 + PR #18)
+- `tests/compleacte/scan.spec.ts` — 11 teste, pe trei straturi de adâncime:
+  - **A. Parsare pură (6)** — funcțiile „PURA" expuse public (`OCR.parseazaTalon`, `parseazaCI`, `referinteCI`, `MRZ.dinText`, `MRZ.valideazaCNP`), fără rețea și fără DOM: talon (VIN 17/placă/an/marcă/tip), CI fallback pe referințe (nume Title Case, CNP valid, serie, nr, județ, localitate), bandă MRZ sintetică, cifră de control CNP corectă vs. greșită, negativ „DEPANARE TALON".
+  - **B. UIB (1, dens)** — `UIB.populeazaFormular` pe câmpuri sintetice `tst_`: prefix, sare readonly și încearcă candidatul următor, **izolează `#s3`** (ecranul 3 nu e atins la scanare — cerință din ui-binder.js), aliasuri (`serie` → `serie_buletin`), `diagnostic()` scrise/lipsă.
+  - **C. E2E cu Vision mock-uit (3)** — `page.route()` pe endpointul Google Vision; `scanCI` cu `UIB.populeazaFormular` ca aplicator → 6/6 câmpuri scrise în formular; negativele: lipsă cheie → reject „LIPSA CHEIE"; cheie respinsă de Google (HTTP 400 „API key not valid") → mesajul „Cheia Google Vision este INVALIDA", nu crash.
+  - **D. Declanșare din buton (1)** — click pe `.btn-scan` → `filechooser` (fallback desktop `alegeImagine`).
+- **Zero apeluri reale către Google Vision** (cheie/cost/rețea), zero fișiere imagine externe (canvas sintetic la runtime), prefixe `tst_`/`e2e_` care nu colizionează cu formularul real (`v_`/`c_`/`m_`).
+- **Ipoteza DEFECT-003 a fost infirmată**: se suspectase că `SCUI.init()` (rulat la `DOMContentLoaded`) nu se leagă pe butoanele `.btn-scan` randate asincron de form-engine. Testul D a trecut — cronometrarea e corectă, nu există defect. Ipoteza documentată în cod, testată, eliminată.
+- Ciclu complet: explorare statică (`cat`/`grep` pe cele 4 module OCR) → branch → PR #17 (merge) → rulare 10/11 → diagnostic (aserțiune greșită în test, parserul app-ului era corect) → PR #18 fix → **11/11 passed (9.4s)**. **30/30 pe main.**
+
+#### Lecții din ciclu (portfolio material)
+- **Citește codul înainte să testezi**: întreaga strategie a suitei a rezultat din explorarea statică — funcțiile „PURA" expuse public au permis 6 teste fără mock; aplicatorul injectabil al `scanCI` a permis e2E fără modificarea app-ului; endpointul unic Vision a făcut un singur `page.route` suficient.
+- **Când un test pică, întâi întreabă: cine greșește — testul sau app-ul?** Prima rulare a picat pe `serie: 'XX' vs 'AB'`; regexul real din `mrz.js` (`I?DRO[A-Z]{0,3}(...)`) consumă codul țării în grupa necapturată și capturează seria `AB` — parserul era corect, aserțiunea mea interpreta greșit formatul TD1. Diagnoza corectă a evitat un raport de defect fals către dev.
+- **Formulează ipoteze de defect, apoi testează-le explicit**: DEFECT-003 nu a fost niciodată „raportat" — a fost o ipoteză încapsulată într-un test; când testul a trecut, ipoteza a murit singură, cu dovezi. Un QA bun ține ipotezele de defect ca pe niște pariuri verificabile, nu ca pe niște acuzații.
+
 ## Următorii pași (propuși, neîncepuți)
 
 - ~~Suită pentru ecranul 2 „Date": validare câmpuri obligatorii, flux înainte, navigare înapoi.~~ → **livrat în PR #12** (via `date.spec.ts`).
 - ~~Suită pentru ecranul 3 „Verificare".~~ → **livrat în PR #13** (secțiunea 6).
 - ~~Teste pentru `genereazaContract()` (PDF-ul propriu-zis).~~ → **livrat în PR #15** (secțiunea 8).
+- ~~Suită pentru scanarea OCR.~~ → **livrat în PR #17 + PR #18** (secțiunea 9).
 - Notificare dev despre DEFECT-001 + DEFECT-002: mesaj pregătit, trimis de utilizator (link-uri la ambele documente + explicația alarmelor automate inverse).
 - Raport remediere la test picat: descriere, pași reproducere, așteptat vs. obținut, cauză, plan fix, retest — fără a modifica automat aplicația testată.
 - După fix-ul DEFECT-001/002 de către dev: verificare că testele `test.fail` încep să treacă („expected to fail but passed"), scoaterea marcajelor, închiderea defectelor.
