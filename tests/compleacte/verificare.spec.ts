@@ -19,7 +19,8 @@ import type { AddressInfo } from 'node:net';
  * Selectorii sunt cei reali, citiți din index.html (2026-11-12):
  *  - #s3 conține oglinzi readonly ale câmpurilor din #s2 (data-pdf identic);
  *  - wrapperul fix-s3-copiere copiază valorile s2 → s3 înainte de arata(3);
- *  - valideaza() blochează/deblochează #btnGenereaza și comută #avertisment.
+ *  - valideaza() blochează/deblochează #btnGenereaza și comută #avertisment
+ *    (element confirmat la linia 81 din index.html).
  *
  * Serverul static e identic cu cel din date.spec.ts (port aleator, nimic permanent).
  * www/ NU e în repo (cheie API hardcodată în index.html).
@@ -82,7 +83,7 @@ function cnpValid(baza12: string): string {
 /** Valori realiste pentru fiecare cheie obligatorie (CNP-urile sunt generate, deci valide). */
 const VALORI_TEST: Record<(typeof CHEI_OBLIGATORII)[number], string> = {
   v_nume: 'Popescu Ion', v_cnp: cnpValid('193062512345'), v_telefon: '0722111222',
-  c_nume: 'Ionescu Maria', c_cnp: cnpValid('2950119444455'), c_telefon: '0733222333',
+  c_nume: 'Ionescu Maria', c_cnp: cnpValid('295011944455'), c_telefon: '0733222333',
   m_marca: 'Dacia', m_nr_inmatriculare: 'B 12 ABC', m_vin: 'UU1HSDCAP12345678',
   pret_cifre: '15000', pret_litere: 'cincisprezece mii', contract_loc: 'București',
   contract_data: '12.11.2026',
