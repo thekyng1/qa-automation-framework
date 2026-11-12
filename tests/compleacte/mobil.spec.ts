@@ -110,20 +110,15 @@ test.describe('CompleActe mobil', () => {
   });
 
   /**
-   * DEFECT-003 (deschis): .btn-scan are înălțimea 38px — sub minimul 44px
-   * din ghidul Android Material. Cauză CSS: padding:10px 14px; font-size:15px,
-   * fără min-height. Pe desktop trece neobservat, pe mobil degetul ratează
-   * cel mai folosit buton al app-ului.
-   *
-   * ALARMĂ INVERSĂ (pattern DEFECT-001): cât timp defectul e deschis, testul e
-   * marcat test.fail — testul TRECE funcțional (găsește < 44px), deci suita
-   * e roșie cu intenție. Când dev adaugă min-height:44px în CSS, testul va
-   * eșua cu „expected to fail but passed" → ștergem adnotarea test.fail și
-   * închidem DEFECT-003. Imposibil de reparat fără să observăm.
-   * Fix recomandat (ambele copii ale app-ului):
-   *   .btn-scan{ ...; min-height:44px; min-width:44px; }
+   * DEFECT-003 (REZOLVAT — 2026-11-12): .btn-scan avea 38px, sub minimul
+   * 44px din ghidul Android Material. Dev a adăugat min-height:44px +
+   * min-width:44px în CSS (ambele copii ale app-ului). Alarma inversă
+   * (test.fail, pattern DEFECT-001) a declanșat în run #7 cu „expected
+   * to fail but passed" — adnotarea a fost ștearsă, testul e acum
+   * REGRESIE PERMANENTĂ: dacă butonul scade vreodată sub 44px, pică cu
+   * mesajul exact (38 < 44), nu trece neobservat.
    */
-  test.fail('tap-target: .btn-scan are cel puțin 44x44 px (Android Material)', async ({ page }) => {
+  test('tap-target: .btn-scan are cel puțin 44x44 px (Android Material)', async ({ page }) => {
     await page.goto(appUrl + '/');
     await page.locator('#acord').tap();
     await tap(page, 'button:has-text("Continuă")');

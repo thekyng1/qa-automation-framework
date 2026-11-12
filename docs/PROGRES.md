@@ -4,10 +4,10 @@ Document viu: ce am livrat, în ce ordine, cu ce rezultat. Se actualizează la f
 
 ## Stare — 2026-11-12 (final de zi)
 
-- Toate PR-urile sunt **merge-uite în `main`**: **#20** (DEFECT-001) și **#21** (DEFECT-002), închise astăzi.
-- **DEFECT-001 și DEFECT-002 sunt REZOLVATE** — ambele sub **regresie permanentă**, nu doar sub alarmă inversă.
-- Suita CompleActe: **30/30 passed** pe `main` (35.7s) — zero alarme inverse active.
-- Fluxul complet CompleActe funcționează end-to-end: Acord → Date → Verificare → **PDF cu diacritice**.
+- Toate PR-urile ciclului mobil sunt **merge-uite în `main`**: **#23** (suita mobilă), **#24** (DEFECT-003 + fix `contract_data`), **#25** (CNP-uri generate); **#26** (închiderea DEFECT-003) e deschis pentru merge.
+- **DEFECT-001, DEFECT-002 și DEFECT-003 sunt REZOLVATE** — toate trei sub **regresie permanentă**, nu doar sub alarmă inversă.
+- Suita CompleActe: **67/67 passed** pe 2 proiecte — `chromium` 30 + `mobile-chrome` 37 (Pixel 7, 412px, touch) — zero alarme inverse active.
+- Fluxul complet CompleActe funcționează end-to-end pe desktop și mobil: Acord → Date → Verificare → **PDF cu diacritice**.
 - Consola QA rulează pe server (systemd, `127.0.0.1:3200`, acces doar prin tunel SSH).
 - Repo-ul e sursa de adevăr; serverul se sincronizează din repo.
 
@@ -78,7 +78,7 @@ Document viu: ce am livrat, în ce ordine, cu ce rezultat. Se actualizează la f
   - **C. E2E cu Vision mock-uit (3)** — `page.route()` pe endpointul Google Vision; `scanCI` cu `UIB.populeazaFormular` ca aplicator → 6/6 câmpuri scrise în formular; negativele: lipsă cheie → reject „LIPSA CHEIE\"; cheie respinsă de Google (HTTP 400 „API key not valid\") → mesajul „Cheia Google Vision este INVALIDA\", nu crash.
   - **D. Declanșare din buton (1)** — click pe `.btn-scan` → `filechooser` (fallback desktop `alegeImagine`).
 - **Zero apeluri reale către Google Vision** (cheie/cost/rețea), zero fișiere imagine externe (canvas sintetic la runtime), prefixe `tst_`/`e2e_` care nu colizionează cu formularul real (`v_`/`c_`/`m_`).
-- **Ipoteza DEFECT-003 a fost infirmată**: se suspectase că `SCUI.init()` (rulat la `DOMContentLoaded`) nu se leagă pe butoanele `.btn-scan` randate asincron de form-engine. Testul D a trecut — cronometrarea e corectă, nu există defect. Ipoteza documentată în cod, testată, eliminată.
+- **Ipoteza DEFECT-003 a fost infirmată**: se suspectase că `SCUI.init()` (rulat la `DOMContentLoaded`) nu se leagă pe butoanele `.btn-scan` randate asincron de form-engine. Testul D a trecut — cronometrarea e corectă, nu există defect. Ipoteză documentată în cod, testată, eliminată.
 - Ciclu complet: explorare statică (`cat`/`grep` pe cele 4 module OCR) → branch → PR #17 (merge) → rulare 10/11 → diagnostic (aserțiune greșită în test, parserul app-ului era corect) → PR #18 fix → **11/11 passed (9.4s)**. **30/30 pe main.**
 
 #### Lecții din ciclu (portfolio material)
@@ -105,6 +105,19 @@ Document viu: ce am livrat, în ce ordine, cu ce rezultat. Se actualizează la f
 - **Alarmă inversă funcționează ca mecanism de livrare, nu doar de detecție**: de două ori azi, remedierea dev-ului a fost *observată automat* de suită, iar promovarea din `test.fail` în regresie a transformat fix-ul în pavaj permanent — regresia nu mai depinde de vigilența nimănui.
 - **Diagnosticul înainte de fix**: am citit lanțul real din pdf-generator.js (condiție, catch tăcut, fallback `font || undefined`) înainte să propunem remedierea — fix-ul de o linie a rezultat direct din înțelegerea codului, nu din ghicit.
 
+### 12. Ciclul mobil — de la zero la DEFECT-003 închis (PR #23, #24, #25, #26)
+- **Suita mobilă** (PR #23): proiect `mobile-chrome` în `playwright.config.ts` (Pixel 7, hasTouch, isMobile, viewport 412x915) + `tests/compleacte/mobil.spec.ts` — 7 teste: health overflow la 412px, flux acord cu tap, negativ fără acord, tap-target `.btn-scan`, tap-target Continuă/Verifică, filechooser la tap pe `.btn-scan`, flux complet formular valid → PDF descărcat. Suita CompleActe: de la 30 la **67 de teste** (30 desktop + 30 re-rulate la 412px + 7 noi).
+- **Run #4 (prima rulare mobilă): 35/37** — și aici e valoarea ciclului: 30/30 pe desktop nu prinseseră nimic, dar la 412px cu touch au apărut 2 probleme: un **defect real** (`.btn-scan` 38px < 44px Android Material — **DEFECT-003**, invizibil pe desktop) și un **bug de test** (`contract_data` necompletat, cerut non-vid de `valideaza()`). DEFECT-003 documentat în `docs/defecte/` cu alarmă inversă `test.fail` (PR #24).
+- **Run #5: 36/37** — al doilea bug de test: CNP-urile hardcodate aveau checksum greșit (2930525123457 → cifra corectă e 1) și `valideaza()` le respingea. Corectat cu `cnpValid()` — generare cu algoritmul app-ului (PR #25).
+- **Run #6: 37/37 expected** — suita mobilă complet verde, cu DEFECT-003 ținut sub alarmă (roșu intenționat, singurul „eșec" fiind testul care trecea funcțional).
+- **Fix-ul dev (o linie CSS, ambele copii ale app-ului): `min-height:44px; min-width:44px`** → **run #7: alarma a declanșat exact ca la DEFECT-001/002** — testul tap-target a trecut cu 44px real, Playwright a raportat „expected to fail but passed". PR-ul de închidere (#26): adnotarea `test.fail` ștearsă, testul promovat în **regresie permanentă**, DEFECT-003 → REZOLVAT, acest document actualizat.
+
+#### Lecții din ciclu (portfolio material)
+- **Cea mai valoroasă pereche e „defect real + bug de test" în același run** (run #4): unul a devenit DEFECT-003, documentat cu alarmă; celălalt, diagnosticat corect (testul greșea, nu app-ul), a evitat un raport de defect fals către dev. „Cine greșește — testul sau app-ul?" rămâne prima întrebare a oricărei depanări.
+- **CNP-urile de test se generează, nu se scriu de mână** (run #5): un checksum calculat „cu ochiul" a respins un formular altfel valid — din nou testul, nu app-ul, era de vină. Datele de test care trec printr-un algoritm de validare trebuie produse de același algoritm.
+- **Alarma inversă, a treia oară confirmată ca mecanism de livrare**: DEFECT-001, DEFECT-002, DEFECT-003 — toate trei închise prin același pattern: documentat cu `test.fail` → fix dev → „expected to fail but passed" → promovare automată în regresie permanentă. Fix-ul dev-ului a fost observat fără nicio vigilență umană.
+- **Desktop-ul nu poate prinde defecte de deget**: 38px vs 44px nu există la mouse; proiectul `mobile-chrome` a prins defectul din primul run. Pentru un app Capacitor, o suită verde pe un singur proiect e doar jumătate de suită.
+
 ## Următorii pași (propuși, neîncepuți)
 
 - ~~Suită pentru ecranul 2 „Date".~~ → **livrat în PR #12** (via `date.spec.ts`).
@@ -112,8 +125,9 @@ Document viu: ce am livrat, în ce ordine, cu ce rezultat. Se actualizează la f
 - ~~Teste pentru `genereazaContract()` (PDF-ul propriu-zis).~~ → **livrat în PR #15** (secțiunea 8).
 - ~~Suită pentru scanarea OCR.~~ → **livrat în PR #17 + PR #18** (secțiunea 9).
 - ~~Notificare dev despre DEFECT-001 + DEFECT-002.~~ → **trimisă** (secțiunea 7).
-- ~~Verificare că testele `test.fail` încep să treacă la fix-ul dev-ului, scoaterea marcajelor, închiderea defectelor.~~ → **DEFECT-001 și DEFECT-002 închise** (secțiunile 10 și 11, PR #20 + PR #21).
-- **Testare mobilă** (viewport/TouchCAPTCHA în Playwright) — următoarea provocare propusă.
+- ~~Verificare că testele `test.fail` încep să treacă la fix-ul dev-ului, scoaterea marcajelor, închiderea defectelor.~~ → **DEFECT-001, DEFECT-002 și DEFECT-003 închise** (secțiunile 10, 11 și 12).
+- ~~**Testare mobilă** (viewport/touch în Playwright).~~ → **livrată** (PR #23–#26, secțiunea 12).
+- **Verificare pe telefon fizic** (build Capacitor pe Android real): camera cu `.btn-scan` la noile 44px, PDF salvat în Documents, share nativ — pasul pe care niciun Playwright nu-l poate face.
 - **OCR cu fotografii reale** — extensie naturală a suitei OCR actuale (acum doar canvas sintetic).
 - Raport remediere la test picat: descriere, pași reproducere, așteptat vs. obținut, cauză, plan fix, retest — fără a modifica automat aplicația testată.
 
