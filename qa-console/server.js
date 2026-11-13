@@ -77,7 +77,7 @@ app.post('/api/run', (req, res) => {
   const id = startRun(suite);
   if (suite === 'pnc-shared') {
     // suita externă: declanșează CI-ul GitHub din ParentalNightControl prin pnc-run.sh
-    const child = spawn('bash', [path.join(__dirname, 'pnc-run.sh')], { cwd: FW_DIR });
+    const child = spawn('bash', [path.join(__dirname, 'pnc-run.sh')], { cwd: FW_DIR, stdio: 'inherit' });
     current = { child, id };
     child.on('close', code => { finishRun(id, { suite, reportPath: PNC_SUMMARY, exitCode: code }); current = null; });
     child.on('error', () => { finishRun(id, { suite, reportPath: PNC_SUMMARY, exitCode: 1 }); current = null; });

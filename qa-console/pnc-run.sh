@@ -16,10 +16,10 @@ rm -rf "$SUMMARY_DIR"
 mkdir -p "$SUMMARY_DIR"
 
 echo "[pnc-run] declanșez workflow-ul '${WORKFLOW}' pe ${REPO}@${REF}"
-gh workflow run "$WORKFLOW" --repo "$REPO" --ref "$REF"
-
-# run-ul creat de workflow_dispatch nu apare instant — poll scurt până apare
+# capturăm id-ul ultimului run ÎNAINTE de dispatch (altfel BEFORE poate prinde chiar run-ul nou)
 BEFORE=$(gh run list --repo "$REPO" --workflow "$WORKFLOW" --limit 1 --json databaseId --jq '.[0].databaseId')
+
+gh workflow run "$WORKFLOW" --repo "$REPO" --ref "$REF"
 RUN_ID=""
 for _ in $(seq 1 30); do
   RUN_ID=$(gh run list --repo "$REPO" --workflow "$WORKFLOW" --limit 1 --json databaseId --jq '.[0].databaseId')
