@@ -7,6 +7,7 @@ import { startRun, finishRun, listRuns, getRun, markStaleRunsInterrupted, delete
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FW_DIR = '/opt/qa/qa-automation-framework';
 const REPORT = path.join(FW_DIR, 'playwright-report.json');
+const PNC_SUMMARY = '/tmp/pnc-summary/pnc-test-summary.json';
 const PORT = 3200;
 
 const app = express();
@@ -72,12 +73,20 @@ app.get('/api/runs/:id/summary', (req, res) => {
 
 app.post('/api/run', (req, res) => {
   if (current) return res.status(409).json({ error: 'exista deja o rulare in curs' });
-  const suite = ['tests/ai', 'tests/compleacte', 'tests/orders-api.spec.ts', 'all'].includes(req.body?.suite) ? req.body.suite : 'tests/ai';
+  const suite = ['tests/ai', 'tests/compleacte', 'tests/orders-api.spec.ts', 'pnc-shared', 'all'].includes(req.body?.suite) ? req.body.suite : 'tests/ai';
   const id = startRun(suite);
-  const child = spawn('npx', ['playwright', 'test', ...(suite === 'all' ? [] : [suite])], { cwd: FW_DIR });
-  current = { child, id };
-  child.on('close', code => { finishRun(id, { suite, reportPath: REPORT, exitCode: code }); current = null; });
-  child.on('error', () => { finishRun(id, { suite, reportPath: REPORT, exitCode: 1 }); current = null; });
+  if (suite === 'pnc-shared') {
+    // suita externă: declanșează CI-ul GitHub din ParentalNightControl prin pnc-run.sh
+    const child = spawn('bash', [path.join(__dirname, 'pnc-run.sh')], { cwd: FW_DIR });
+    current = { child, id };
+    child.on('close', code => { finishRun(id, { suite, reportPath: PNC_SUMMARY, exitCode: code }); current = null; });
+    child.on('error', () => { finishRun(id, { suite, reportPath: PNC_SUMMARY, exitCode: 1 }); current = null; });
+  } else {
+    const child = spawn('npx', ['playwright', 'test', ...(suite === 'all' ? [] : [suite])], { cwd: FW_DIR });
+    current = { child, id };
+    child.on('close', code => { finishRun(id, { suite, reportPath: REPORT, exitCode: code }); current = null; });
+    child.on('error', () => { finishRun(id, { suite, reportPath: REPORT, exitCode: 1 }); current = null; });
+  }
   res.json({ id, suite });
 });
 
